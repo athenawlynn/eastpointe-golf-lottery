@@ -11,13 +11,13 @@
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     margin: 0; padding: 24px;
     min-height: 100vh;
-    background: url('golf-bg.jpg') center/cover fixed no-repeat;
+    background: linear-gradient(to bottom, #dff7df 0%, #ffffff 80%), url('golf-bg.jpg') center/cover fixed no-repeat;
     position: relative;
   }
   body::before{
     content:"";
     position:fixed; inset:0;
-    background: rgba(0,0,0,.35);
+    background: rgba(255,255,255,.15);
     z-index:-1;
   }
 
@@ -28,46 +28,44 @@
     width: 260px; max-width: 60%;
     margin: 12px auto 4px auto;
     display:block;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)) brightness(1.1);
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)) brightness(1.05);
   }
   #logoFallback{
     display:none;
-    color:#fff;
+    color:#0e7a32;
     font-weight:800;
-    font-size:24px;
+    font-size:26px;
     letter-spacing:.5px;
-    text-shadow:0 3px 8px rgba(0,0,0,.7);
     margin-bottom: 8px;
   }
 
   h1 {
     font-size: 36px;
-    color:#fff;
+    color:#0e7a32;
     font-weight: 800;
     margin: 0 0 24px;
     letter-spacing: 0.5px;
-    text-shadow:0 3px 8px rgba(0,0,0,.7);
+    text-shadow:0 2px 6px rgba(255,255,255,.5);
   }
 
   .card {
-    background: rgba(255,255,255,.92);
+    background: rgba(255,255,255,.96);
     border-radius: 14px; padding: 16px;
-    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+    box-shadow: 0 12px 30px rgba(0,0,0,.12);
     margin-bottom: 16px;
     text-align:left;
-    backdrop-filter: blur(2px);
   }
 
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 860px){ .row{ grid-template-columns: 1fr; } }
 
-  label { font-weight: 600; display:block; margin-bottom: 8px; }
+  label { font-weight: 600; display:block; margin-bottom: 8px; color:#034e17; }
   textarea, input, select {
     width: 100%; box-sizing: border-box; border-radius: 10px;
-    border: 1px solid #d9dde6; padding: 12px; font-size: 15px;
+    border: 1px solid #c4d7c2; padding: 12px; font-size: 15px;
     background: #fbfcfe;
   }
-  .hint { font-size: 12px; color: #667085; margin-top: 6px; }
+  .hint { font-size: 12px; color: #4d684d; margin-top: 6px; }
   .btn {
     background: var(--green); color: #fff; border: none; border-radius: 10px;
     padding: 12px 16px; font-size: 16px; cursor: pointer;
@@ -113,10 +111,10 @@
     padding: 14px 18px;
     border-radius: 10px;
     background: rgba(255,255,255,0.95);
-    border: 1px solid #e0e0e0;
-    color: #333;
+    border: 1px solid #cce0cc;
+    color: #093c15;
     font-size: 15px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06);
     line-height: 1.6;
     text-align: left;
   }
@@ -170,10 +168,11 @@ Avery"></textarea>
         </div>
 
         <div>
-          <label for="noPair">Do-Not-Pair (one pair per line; use “Name A - Name B”)</label>
-          <textarea id="noPair" rows="10" placeholder="Max - Harry
-Quinn - Riley"></textarea>
-          <div class="hint">These pairs will never be placed on the same team (unless you check the ignore box).</div>
+          <label for="noPair">Enter names of players not to be paired together (one pair per line — you can use a comma or the word “and”)</label>
+          <textarea id="noPair" rows="10" placeholder="Max and Harry
+Quinn, Riley
+Taylor and Jordan"></textarea>
+          <div class="hint">These players will be kept on separate teams (unless you check the ignore box). You can also list more than two on a line to keep that whole group separate.</div>
         </div>
       </div>
 
@@ -199,13 +198,11 @@ Quinn - Riley"></textarea>
       </div>
     </div>
 
-    <!-- Instruction Note Section -->
     <div class="note">
       <strong>Note:</strong> Pairs are reshuffled weekly — players won’t repeat partners from the previous draw.<br>
       Teams are fixed at 4 players. When the count isn’t even, the app creates fair mixes of 3s and 4s automatically.
     </div>
 
-    <!-- Middle notification message -->
     <div id="msg"></div>
 
     <div class="card results-wrap">
@@ -218,19 +215,25 @@ Quinn - Riley"></textarea>
 function normalizeName(s){return s.trim().replace(/\s+/g,' ');}
 function keyPair(a,b){const A=normalizeName(a).toLowerCase();const B=normalizeName(b).toLowerCase();return A<B?A+'|'+B:B+'|'+A;}
 function parsePlayers(raw){return raw.split(/[\r\n,]+/).map(normalizeName).filter(Boolean);}
+
 function parseNoPair(raw){
   const set=new Set();
+  const sep = /\s*(?:,|and|&|\||-)\s*/i;
   raw.split(/\r?\n/).forEach(line=>{
-    const m=line.split(/\s*-\s*/);
-    if(m.length===2){
-      const a=normalizeName(m[0]);
-      const b=normalizeName(m[1]);
-      if(a&&b)set.add(keyPair(a,b));
+    const cleaned=line.trim();
+    if(!cleaned) return;
+    let parts = cleaned.split(sep).map(normalizeName).filter(Boolean);
+    if(parts.length<2) return;
+    for(let i=0;i<parts.length;i++){
+      for(let j=i+1;j<parts.length;j++){
+        set.add(keyPair(parts[i], parts[j]));
+      }
     }
   });
   return set;
 }
 function hasConflictWithTeam(name,team,forbidden){return team.some(member=>forbidden.has(keyPair(name,member)));}
+
 function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function buildTeams(players,teamSize,forbidden){
   const pool=shuffle(players); const teams=[];
@@ -265,51 +268,4 @@ function clearMsg(){ msgEl.innerHTML=''; }
 
 const PALETTE_CLASSES = ['c0','c1','c2','c3','c4','c5','c6','c7'];
 function renderTeamsHTML(teams){
-  const cards = teams.map((team, i) => {
-    const cls = PALETTE_CLASSES[i % PALETTE_CLASSES.length];
-    const title = `Team ${i+1} (${team.length})`;
-    const names = team.join(', ');
-    return `
-      <div class="team-card ${cls}">
-        <div class="team-head">
-          <div>${title}</div>
-          <div class="pill">#${i+1}</div>
-        </div>
-        <div class="team-body">${names}</div>
-      </div>`;
-  }).join('');
-  return `<div class="teams-grid">${cards}</div>`;
-}
-
-generateBtn.addEventListener('click',()=>{
-  clearMsg();
-  resultsEl.innerHTML = '';
-
-  const players=parsePlayers(playersEl.value);
-  const teamSize=parseInt(teamSizeEl.value,10);
-  if(players.length===0){
-    showMsg('❌ Please enter at least one player.','error');
-    return;
-  }
-
-  const ignore=ignoreEl.checked;
-  const forbidden=ignore?new Set():parseNoPair(noPairEl.value);
-
-  const ATTEMPTS=50;
-  let solution=null;
-  for(let k=0;k<ATTEMPTS&&!solution;k++){
-    solution=buildTeams(players,teamSize,forbidden);
-  }
-
-  if(!solution){
-    showMsg('❌ Could not satisfy the “Do-Not-Pair” rules. Try relaxing a pair or changing team size.','error');
-    return;
-  }
-
-  resultsEl.innerHTML = renderTeamsHTML(solution);
-  showMsg(ignore ? '✅ Teams generated (criteria ignored).' :
-                   '✅ Teams generated with Do-Not-Pair rules applied.','ok');
-});
-</script>
-</body>
-</html>
+  const cards = teams.map((team, i
