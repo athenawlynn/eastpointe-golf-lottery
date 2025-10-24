@@ -11,7 +11,14 @@
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     margin: 0; padding: 24px;
     min-height: 100vh;
-    background: linear-gradient(to bottom, #dff7df 0%, #ffffff 80%), url('golf-bg.jpg') center/cover fixed no-repeat;
+
+    /* ✅ Use separate properties for multi-backgrounds to avoid parsing issues */
+    background-image: linear-gradient(to bottom, #dff7df 0%, #ffffff 80%), url('golf-bg.jpg');
+    background-repeat: no-repeat, no-repeat;
+    background-attachment: fixed, fixed;
+    background-position: center, center;
+    background-size: cover, cover;
+
     position: relative;
   }
   body::before{
@@ -203,6 +210,7 @@ Taylor and Jordan"></textarea>
       Teams are fixed at 4 players. When the count isn’t even, the app creates fair mixes of 3s and 4s automatically.
     </div>
 
+    <!-- Middle notification message -->
     <div id="msg"></div>
 
     <div class="card results-wrap">
@@ -268,4 +276,51 @@ function clearMsg(){ msgEl.innerHTML=''; }
 
 const PALETTE_CLASSES = ['c0','c1','c2','c3','c4','c5','c6','c7'];
 function renderTeamsHTML(teams){
-  const cards = teams.map((team, i
+  const cards = teams.map((team, i) => {
+    const cls = PALETTE_CLASSES[i % PALETTE_CLASSES.length];
+    const title = `Team ${i+1} (${team.length})`;
+    const names = team.join(', ');
+    return `
+      <div class="team-card ${cls}">
+        <div class="team-head">
+          <div>${title}</div>
+          <div class="pill">#${i+1}</div>
+        </div>
+        <div class="team-body">${names}</div>
+      </div>`;
+  }).join('');
+  return `<div class="teams-grid">${cards}</div>`;
+}
+
+generateBtn.addEventListener('click',()=>{
+  clearMsg();
+  resultsEl.innerHTML = '';
+
+  const players=parsePlayers(playersEl.value);
+  const teamSize=parseInt(teamSizeEl.value,10);
+  if(players.length===0){
+    showMsg('❌ Please enter at least one player.','error');
+    return;
+  }
+
+  const ignore=ignoreEl.checked;
+  const forbidden=ignore?new Set():parseNoPair(noPairEl.value);
+
+  const ATTEMPTS=50;
+  let solution=null;
+  for(let k=0;k<ATTEMPTS&&!solution;k++){
+    solution=buildTeams(players,teamSize,forbidden);
+  }
+
+  if(!solution){
+    showMsg('❌ Could not satisfy the “not paired together” rules. Try relaxing a line or changing team size.','error');
+    return;
+  }
+
+  resultsEl.innerHTML = renderTeamsHTML(solution);
+  showMsg(ignore ? '✅ Teams generated (criteria ignored).' :
+                   '✅ Teams generated with “not paired together” rules applied.','ok');
+});
+</script>
+</body>
+</html>
