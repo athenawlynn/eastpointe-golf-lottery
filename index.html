@@ -141,7 +141,17 @@
   let lastGeneratedTeams = null;
   let autoWeekLabel = '';
 
-  function parseNames(raw){ return raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
+  function parseNames(raw) {
+  let list = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+  // 👇 Auto-fix if everything is on one line (e.g. "Ava Lily Sophia Emma")
+  if (list.length === 1 && list[0].includes(" ")) {
+    list = list[0].split(/\s+/); // split by spaces
+  }
+
+  return list;
+}
+ return raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
   function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
   function escapeHtml(s){ return s.replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
