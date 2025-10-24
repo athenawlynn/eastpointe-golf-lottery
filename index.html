@@ -141,7 +141,18 @@
   let lastGeneratedTeams = null;
   let autoWeekLabel = '';
 
-  function parseNames(raw) {
+function parseNames(raw) {
+  // split by new lines first
+  let list = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+  // Auto-fix if everything is on ONE line (e.g., "Ava Lily Sophia …")
+  if (list.length === 1 && list[0].includes(" ")) {
+    list = list[0].split(/\s+/); // split on any spaces/tabs
+  }
+
+  return list;
+}
+
   let list = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
 
   // 👇 Auto-fix if everything is on one line (e.g. "Ava Lily Sophia Emma")
