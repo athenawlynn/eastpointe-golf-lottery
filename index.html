@@ -12,7 +12,7 @@
     margin: 0; padding: 24px;
     min-height: 100vh;
 
-    /* ✅ Use separate properties for multi-backgrounds to avoid parsing issues */
+    /* robust, bright background */
     background-image: linear-gradient(to bottom, #dff7df 0%, #ffffff 80%), url('golf-bg.jpg');
     background-repeat: no-repeat, no-repeat;
     background-attachment: fixed, fixed;
@@ -200,7 +200,7 @@ Taylor and Jordan"></textarea>
         </div>
 
         <div style="text-align:right">
-          <button id="generateBtn" class="btn">Generate Teams</button>
+          <button id="generateBtn" class="btn" type="button">Generate Teams</button>
         </div>
       </div>
     </div>
@@ -220,106 +220,114 @@ Taylor and Jordan"></textarea>
   </div>
 
 <script>
-function normalizeName(s){return s.trim().replace(/\s+/g,' ');}
-function keyPair(a,b){const A=normalizeName(a).toLowerCase();const B=normalizeName(b).toLowerCase();return A<B?A+'|'+B:B+'|'+A;}
-function parsePlayers(raw){return raw.split(/[\r\n,]+/).map(normalizeName).filter(Boolean);}
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    function normalizeName(s){return s.trim().replace(/\s+/g,' ');}
+    function keyPair(a,b){const A=normalizeName(a).toLowerCase();const B=normalizeName(b).toLowerCase();return A<B?A+'|'+B:B+'|'+A;}
+    function parsePlayers(raw){return raw.split(/[\r\n,]+/).map(normalizeName).filter(Boolean);}
 
-function parseNoPair(raw){
-  const set=new Set();
-  const sep = /\s*(?:,|and|&|\||-)\s*/i;
-  raw.split(/\r?\n/).forEach(line=>{
-    const cleaned=line.trim();
-    if(!cleaned) return;
-    let parts = cleaned.split(sep).map(normalizeName).filter(Boolean);
-    if(parts.length<2) return;
-    for(let i=0;i<parts.length;i++){
-      for(let j=i+1;j<parts.length;j++){
-        set.add(keyPair(parts[i], parts[j]));
-      }
+    function parseNoPair(raw){
+      const set=new Set();
+      const sep = /\s*(?:,|and|&|\||-)\s*/i;
+      raw.split(/\r?\n/).forEach(line=>{
+        const cleaned=line.trim();
+        if(!cleaned) return;
+        let parts = cleaned.split(sep).map(normalizeName).filter(Boolean);
+        if(parts.length<2) return;
+        for(let i=0;i<parts.length;i++){
+          for(let j=i+1;j<parts.length;j++){
+            set.add(keyPair(parts[i], parts[j]));
+          }
+        }
+      });
+      return set;
     }
-  });
-  return set;
-}
-function hasConflictWithTeam(name,team,forbidden){return team.some(member=>forbidden.has(keyPair(name,member)));}
+    function hasConflictWithTeam(name,team,forbidden){return team.some(member=>forbidden.has(keyPair(name,member)));}
 
-function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function buildTeams(players,teamSize,forbidden){
-  const pool=shuffle(players); const teams=[];
-  function tryPlace(idx){
-    if(idx>=pool.length) return true;
-    const p=pool[idx];
-    for(let t=0;t<teams.length;t++){
-      if(teams[t].length<teamSize && !hasConflictWithTeam(p,teams[t],forbidden)){
-        teams[t].push(p);
+    function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+    function buildTeams(players,teamSize,forbidden){
+      const pool=shuffle(players); const teams=[];
+      function tryPlace(idx){
+        if(idx>=pool.length) return true;
+        const p=pool[idx];
+        for(let t=0;t<teams.length;t++){
+          if(teams[t].length<teamSize && !hasConflictWithTeam(p,teams[t],forbidden)){
+            teams[t].push(p);
+            if(tryPlace(idx+1)) return true;
+            teams[t].pop();
+          }
+        }
+        teams.push([p]);
         if(tryPlace(idx+1)) return true;
-        teams[t].pop();
+        teams.pop();
+        return false;
       }
+      return tryPlace(0)?teams:null;
     }
-    teams.push([p]);
-    if(tryPlace(idx+1)) return true;
-    teams.pop();
-    return false;
+
+    const playersEl=document.getElementById('players');
+    const noPairEl=document.getElementById('noPair');
+    const teamSizeEl=document.getElementById('teamSize');
+    const ignoreEl=document.getElementById('ignoreCriteria');
+    const msgEl=document.getElementById('msg');
+    const resultsEl=document.getElementById('results');
+    const generateBtn=document.getElementById('generateBtn');
+
+    function showMsg(text,type='ok'){ msgEl.innerHTML=`<div class="${type}">${text}</div>`; }
+    function clearMsg(){ msgEl.innerHTML=''; }
+
+    const PALETTE_CLASSES = ['c0','c1','c2','c3','c4','c5','c6','c7'];
+    function renderTeamsHTML(teams){
+      const cards = teams.map((team, i) => {
+        const cls = PALETTE_CLASSES[i % PALETTE_CLASSES.length];
+        const title = `Team ${i+1} (${team.length})`;
+        const names = team.join(', ');
+        return `
+          <div class="team-card ${cls}">
+            <div class="team-head">
+              <div>${title}</div>
+              <div class="pill">#${i+1}</div>
+            </div>
+            <div class="team-body">${names}</div>
+          </div>`;
+      }).join('');
+      return `<div class="teams-grid">${cards}</div>`;
+    }
+
+    generateBtn.addEventListener('click', () => {
+      clearMsg();
+      resultsEl.innerHTML = '';
+
+      const players=parsePlayers(playersEl.value);
+      const teamSize=parseInt(teamSizeEl.value,10);
+      if(players.length===0){
+        showMsg('❌ Please enter at least one player.','error');
+        return;
+      }
+
+      const ignore=ignoreEl.checked;
+      const forbidden=ignore?new Set():parseNoPair(noPairEl.value);
+
+      const ATTEMPTS=50;
+      let solution=null;
+      for(let k=0;k<ATTEMPTS&&!solution;k++){
+        solution=buildTeams(players,teamSize,forbidden);
+      }
+
+      if(!solution){
+        showMsg('❌ Could not satisfy the “not paired together” rules. Try relaxing a line or changing team size.','error');
+        return;
+      }
+
+      resultsEl.innerHTML = renderTeamsHTML(solution);
+      showMsg(ignore ? '✅ Teams generated (criteria ignored).' :
+                      '✅ Teams generated with “not paired together” rules applied.','ok');
+    });
+  } catch (e) {
+    const msgEl = document.getElementById('msg');
+    if (msgEl) msgEl.innerHTML = '<div class="error">⚠️ Script error. Try a hard refresh (Shift + Reload). If it persists, tell me what the console says.</div>';
+    console.error(e);
   }
-  return tryPlace(0)?teams:null;
-}
-
-const playersEl=document.getElementById('players');
-const noPairEl=document.getElementById('noPair');
-const teamSizeEl=document.getElementById('teamSize');
-const ignoreEl=document.getElementById('ignoreCriteria');
-const msgEl=document.getElementById('msg');
-const resultsEl=document.getElementById('results');
-const generateBtn=document.getElementById('generateBtn');
-
-function showMsg(text,type='ok'){ msgEl.innerHTML=`<div class="${type}">${text}</div>`; }
-function clearMsg(){ msgEl.innerHTML=''; }
-
-const PALETTE_CLASSES = ['c0','c1','c2','c3','c4','c5','c6','c7'];
-function renderTeamsHTML(teams){
-  const cards = teams.map((team, i) => {
-    const cls = PALETTE_CLASSES[i % PALETTE_CLASSES.length];
-    const title = `Team ${i+1} (${team.length})`;
-    const names = team.join(', ');
-    return `
-      <div class="team-card ${cls}">
-        <div class="team-head">
-          <div>${title}</div>
-          <div class="pill">#${i+1}</div>
-        </div>
-        <div class="team-body">${names}</div>
-      </div>`;
-  }).join('');
-  return `<div class="teams-grid">${cards}</div>`;
-}
-
-generateBtn.addEventListener('click',()=>{
-  clearMsg();
-  resultsEl.innerHTML = '';
-
-  const players=parsePlayers(playersEl.value);
-  const teamSize=parseInt(teamSizeEl.value,10);
-  if(players.length===0){
-    showMsg('❌ Please enter at least one player.','error');
-    return;
-  }
-
-  const ignore=ignoreEl.checked;
-  const forbidden=ignore?new Set():parseNoPair(noPairEl.value);
-
-  const ATTEMPTS=50;
-  let solution=null;
-  for(let k=0;k<ATTEMPTS&&!solution;k++){
-    solution=buildTeams(players,teamSize,forbidden);
-  }
-
-  if(!solution){
-    showMsg('❌ Could not satisfy the “not paired together” rules. Try relaxing a line or changing team size.','error');
-    return;
-  }
-
-  resultsEl.innerHTML = renderTeamsHTML(solution);
-  showMsg(ignore ? '✅ Teams generated (criteria ignored).' :
-                   '✅ Teams generated with “not paired together” rules applied.','ok');
 });
 </script>
 </body>
