@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Eastpointe Weekly Group Selector</title>
 <style>
-  :root { --green:#0e7a32; }
+  :root { --green:#0e7a32; --gold:#f7c948; }
 
   body {
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -17,7 +17,7 @@
     background-size: cover, cover;
     position: relative;
   }
-  body::before{ content:""; position:fixed; inset:0; background: rgba(255,255,255,.15); z-index:-1; }
+  body::before{ content:""; position:fixed; inset:0; background: rgba(255,255,255,.1); z-index:-1; }
 
   .wrap { max-width: 980px; margin: 0 auto; text-align:center; }
 
@@ -34,8 +34,20 @@
   label { font-weight: 600; display:block; margin-bottom: 8px; color:#034e17; }
   textarea, input, select { width: 100%; box-sizing: border-box; border-radius: 10px; border: 1px solid #c4d7c2; padding: 12px; font-size: 15px; background: #fbfcfe; }
   .hint { font-size: 12px; color: #4d684d; margin-top: 6px; }
-  .btn { background: var(--green); color: #fff; border: none; border-radius: 10px; padding: 12px 16px; font-size: 16px; cursor: pointer; box-shadow: 0 6px 16px rgba(14,122,50,.25); }
+  .btn { background: var(--green); color: #fff; border: none; border-radius: 10px; padding: 12px 16px; font-size: 16px; cursor: pointer; box-shadow: 0 6px 16px rgba(14,122,50,.25); transition: transform .15s, background .3s; }
+  .btn:hover { transform: scale(1.03); }
   .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+  .btn.goldflash {
+    background: var(--gold) !important;
+    color: #222;
+    animation: pulse 0.5s ease;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
 
   .error, .ok { border-radius: 10px; padding: 14px 16px; margin: 20px auto; width: fit-content; font-weight: 600; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.1); animation: toast-in 280ms ease-out forwards; }
   .error { background: #fff2f2; color: #b42318; border: 1px solid #f4c7c7; }
@@ -55,6 +67,8 @@
   .c0 { --c:#2e7d32; --c2:#e8f5e9; } .c1 { --c:#1565c0; --c2:#e3f2fd; } .c2 { --c:#8e24aa; --c2:#f3e5f5; } .c3 { --c:#ef6c00; --c2:#fff3e0; }
   .c4 { --c:#00897b; --c2:#e0f2f1; } .c5 { --c:#ad1457; --c2:#fce4ec; } .c6 { --c:#6d4c41; --c2:#efebe9; } .c7 { --c:#9e9d24; --c2:#f9fbe7; }
   .team-card { border-color: var(--c); background: var(--c2); } .team-head { background: var(--c); }
+
+  #copyBtn { margin-top: 20px; }
 </style>
 </head>
 <body>
@@ -125,6 +139,7 @@ Taylor and Jordan"></textarea>
     <div class="card results-wrap">
       <label>Results</label>
       <div id="results"></div>
+      <button id="copyBtn" class="btn" style="display:none;">📋 Copy Teams ⛳️</button>
     </div>
   </div>
 
@@ -203,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const msgEl     = document.getElementById('msg');
   const resultsEl = document.getElementById('results');
   const btn       = document.getElementById('generateBtn');
+  const copyBtn   = document.getElementById('copyBtn');
 
   const showMsg = (text,type='ok') => { msgEl.innerHTML = `<div class="${type}">${text}</div>`; };
   const clearMsg= () => { msgEl.innerHTML = ''; };
@@ -220,9 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<div class="teams-grid">${cards}</div>`;
   };
 
+  const teamsToText = teams => {
+    return teams.map((team,i)=>`⛳️ Team ${i+1}: ${team.join(', ')}`).join('\n');
+  };
+
   btn.addEventListener('click', () => {
     clearMsg();
     resultsEl.innerHTML = '';
+    copyBtn.style.display = 'none';
 
     const players = parsePlayers(playersEl.value);
     const pref = parseInt(teamSizeEl.value,10);
@@ -243,7 +264,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     resultsEl.innerHTML = renderTeams(solution);
+    copyBtn.style.display = 'inline-block';
     showMsg(ignoreEl.checked ? '✅ Teams generated (criteria ignored).' : '✅ Teams generated with “not paired together” rules applied.','ok');
+
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(teamsToText(solution));
+      copyBtn.classList.add('goldflash');
+      setTimeout(()=>copyBtn.classList.remove('goldflash'), 600);
+      showMsg('✅ Teams copied to clipboard! 📋⛳️','ok');
+    };
   });
 });
 </script>
